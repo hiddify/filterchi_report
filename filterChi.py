@@ -1,9 +1,10 @@
 import csv
+import datetime
 import requests
 from pathlib import Path
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-
+import re
 
 # Using class objects to hold datas
 class Domain:
@@ -49,7 +50,7 @@ class FilterChi:
                 self.extractDomains()
                 # Extract subdomains
                 self.extractSubdomains()
-                # self.extractExternalSubdomains()
+                self.extractExternalSubdomains()
                 # Add subdomains to the list
                 self.addSubdomainsToList()
                 # write the domains and subdomains details
@@ -72,7 +73,7 @@ class FilterChi:
             # get the next url
             self.currentUrl = jsonRes.get("metadata").get("next_url")
         else:
-            print("Connection error")
+            print(f"Connection error occurred during get MetaData from OONI\nStatus Code: {response.status_code}")
 
     def extractDomains(self):
         for row in self.results:
@@ -105,22 +106,23 @@ class FilterChi:
             subdomain = ""
             try: 
                 url = f"https://crt.sh/?q={mainDomain.name}"
-                response = requests.get(url, timeout=10)
+                response = requests.get(url, timeout=30)
                 if response.status_code == 200:
                     soup = BeautifulSoup(response.text, "html.parser")
                     subdomain_elements = soup.select("tr td:nth-child(5)")
                     for element in subdomain_elements:
                         subdomain = element.text.strip().rstrip(".")
                         self.subdomains[subdomain] = mainDomain
-            except:
-                pass
+            except Exception as err:
+                print(f"extractSubDomains Error: {mainDomain}: {err}")
 
     
     def extractExternalSubdomains(self):
         for mainDomain in self.mainDomains:
             # Make a request to the website
             try: 
-                response = requests.get(mainDomain.scheme + mainDomain.name, timeout=10)
+                url = mainDomain.scheme + mainDomain.name
+                response = requests.get(url, timeout=20)
                 # Check if request was successful
                 if response.status_code == 200:
                     # Parse the HTML with BeautifulSoup
@@ -130,20 +132,44 @@ class FilterChi:
                     # Loop through links to check for external domains
                     for link in links:
                         # Get the src or href attribute of the link
-                        if link.name == 'a':
+                        if link.name == 'a' or link.name == 'link':
                             href = link.get('href')
                         else:
                             href = link.get('src')
-                        # Check if the attribute is not empty and starts with http or https
-                        if href is not None and (href.startswith('http://') or href.startswith('https://')):
-                            # Parse the URL of the link and get the domain name
+                        # Skip link if it's None (Empty)
+                        if href is None:
+                            continue
+                        # As you know "//*" links are external and "/*" are internal
+                        # Skip link if it's internal link
+                        # Something like "/assets/layout.css"
+                        regex = re.compile(r'^/[-a-zA-Z0-9@:%._\+~#=]')
+                        if regex.search(href):
+                            continue
+
+                        # Parse the URL of the link and get the domain name
+                        link_domain = ''
+                        if href.startswith('http://') or href.startswith('https://'):
                             link_domain = urlparse(href).netloc
-                            # Check if the domain name of the link is different from the original domain
-                            if link_domain != mainDomain.name:
-                                # Add the external domain to the list
-                                self.subdomains[link_domain] = mainDomain
-            except: 
-                print(f"{mainDomain.scheme + mainDomain.name}: timed out")
+                        elif href.startswith("//"):
+                            # Extract domain even if something like "//www.domain.com/path"
+                            if href.startswith('//www.'):
+                                www_domain = urlparse(href).netloc
+                                link_domain = www_domain.replace('www.','')
+                            else:
+                                # Remove "//" charachters from link
+                                # After that we should have something like "fonts.googleapis.com" (it doesn't have "//" prefix)
+                                link_domain = href.removeprefix("//")
+                        elif href.startswith('www.'):
+                            link_domain = href.replace('www','')
+
+                        # Check if the domain name of the link is different from the original domain
+                        if link_domain != mainDomain.name:
+                            # Add the external domain to the list
+                            self.subdomains[link_domain] = mainDomain
+
+
+            except Exception as err: 
+                print(f"extractExternalSubdomains Error: {url}: {err}")
 
 
 
@@ -175,8 +201,8 @@ class FilterChi:
             if len(results) > 0:
                 if not results[0].get("confirmed"):
                     return False
-        except:
-            print(f"{subdomain}: timed out")
+        except Exception as err:
+            print(f"isFiltered Error: {subdomain}: {err}")
         return True
                 
 
