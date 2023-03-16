@@ -161,11 +161,12 @@ class FilterChi:
                                 link_domain = href.removeprefix("//")
                         elif href.startswith('www.'):
                             link_domain = href.replace('www','')
-
-                        # Check if the domain name of the link is different from the original domain
-                        if link_domain != mainDomain.name:
-                            # Add the external domain to the list
-                            self.subdomains[link_domain] = mainDomain
+                        
+                        # Check link_domain isn't empty and check if the domain name of the link is different from the original domain
+                        if link_domain.strip() != "":
+                            if link_domain != mainDomain.name:
+                                # Add the external domain to the list
+                                self.subdomains[link_domain] = mainDomain
 
 
             except Exception as err: 
