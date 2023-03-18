@@ -43,4 +43,9 @@ https://github.com/hiddify/filterchi_report
 
 
 
-با تشکر
+# هدف پروژه
+
+- گام اول:  سایت های فیلتر شده را در بیاریم 
+- گام دوم: ایجاد فایل [geosite](https://github.com/v2fly/domain-list-community/) متعلق به سایت های 
+فیلترشده ایرانی ها
+- گام سوم: در کنار فایل [iran.dat](https://github.com/bootmortis/iran-hosted-domains) این گزینه میتواند به راحتی تجربه اینترنت سریع برای کاربران را فراهم کنه جوری که فقط سایت های فیلتر شده از فیلترشکن رد بشه
