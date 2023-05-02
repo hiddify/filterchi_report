@@ -28,7 +28,7 @@ def get_all_external_domains(url):
 
         # Use a list comprehension to create a list of all the external domains.
         external_domains = [
-            urlparse(link.get('href')).netloc
+            urlparse(link.get('href', link.get('src'))).netloc
             for link in links
             if link.get('href') is not None
             and (link.get('href').startswith('http://') or link.get('href').startswith('https://'))
@@ -38,7 +38,7 @@ def get_all_external_domains(url):
         # Remove duplicate domains from the list.
         external_domains = list(set(external_domains))
 
-        return external_domains
+        return sorted(external_domains)
     else:
         return None
 
